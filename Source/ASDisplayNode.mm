@@ -412,11 +412,8 @@ static ASDisplayNodeMethodOverrides GetASDisplayNodeMethodOverrides(Class c)
 
   // Synchronous nodes may not be able to call the hierarchy notifications, so only enforce for regular nodes.
   ASDisplayNodeAssert(_flags.synchronous || !ASInterfaceStateIncludesVisible(_interfaceState), @"Node should always be marked invisible before deallocating. Node: %@", self);
+  ASDisplayNodeAssertNil(_supernode, @"ASDisplayNode deallocated while inside supernode %@. How did this happen?", _supernode);
   
-  self.asyncLayer.asyncDelegate = nil;
-  _view.asyncdisplaykit_node = nil;
-  _layer.asyncdisplaykit_node = nil;
-
   // Remove any subnodes so they lose their connection to the now deallocated parent.  This can happen
   // because subnodes do not retain their supernode, but subnodes can legitimately remain alive if another
   // thing outside the view hierarchy system (e.g. async display, controller code, etc). keeps a retained
@@ -430,16 +427,11 @@ static ASDisplayNodeMethodOverrides GetASDisplayNodeMethodOverrides(Class c)
     [self _scheduleIvarsForMainDeallocation];
   }
 
-  _subnodes = nil;
-
 #if YOGA
   if (_yogaNode != NULL) {
     YGNodeFree(_yogaNode);
   }
 #endif
-
-  // TODO: Remove this? If supernode isn't already nil, this method isn't dealloc-safe anyway.
-  [self _setSupernode:nil];
 }
 
 - (void)_scheduleIvarsForMainDeallocation
@@ -4243,6 +4235,7 @@ static const char *ASDisplayNodeAssociatedNodeKey = "ASAssociatedNode";
 
 - (void)setAsyncdisplaykit_node:(ASDisplayNode *)node
 {
+  ASDisplayNodeAssertNotNil(node, @"No need to setAsyncDisplaykit_node=nil – the weak proxy object will be torn down on its own.");
   ASWeakProxy *weakProxy = [ASWeakProxy weakProxyWithTarget:node];
   objc_setAssociatedObject(self, ASDisplayNodeAssociatedNodeKey, weakProxy, OBJC_ASSOCIATION_RETAIN); // Weak reference to avoid cycle, since the node retains the view.
 }
@@ -4259,6 +4252,7 @@ static const char *ASDisplayNodeAssociatedNodeKey = "ASAssociatedNode";
 
 - (void)setAsyncdisplaykit_node:(ASDisplayNode *)node
 {
+  ASDisplayNodeAssertNotNil(node, @"No need to setAsyncDisplaykit_node=nil – the weak proxy object will be torn down on its own.");
   ASWeakProxy *weakProxy = [ASWeakProxy weakProxyWithTarget:node];
   objc_setAssociatedObject(self, ASDisplayNodeAssociatedNodeKey, weakProxy, OBJC_ASSOCIATION_RETAIN); // Weak reference to avoid cycle, since the node retains the layer.
 }
