@@ -55,15 +55,38 @@ typedef NS_OPTIONS(NSUInteger, ASDisplayNodeMethodOverrides)
   ASDisplayNodeMethodOverrideClearFetchedData   = 1 << 6
 };
 
-typedef NS_OPTIONS(uint_least32_t, ASDisplayNodeAtomicFlags)
+// Atomic flag infrastructure
+namespace ASDN {
+  namespace Atomic {
+    /**
+     * The flag type every atomic flag should have
+     */
+    typedef uint_least32_t FlagType;
+   
+    /**
+     * Returns the current value for the flag
+     */
+    template<typename T>
+    static inline BOOL checkFlag(T _Nonnull n, FlagType flag) {
+      return ((n->_atomicFlags.load() & flag) != 0);
+    };
+   
+    /**
+     * Set's the new value and returns the old value of the flag
+     */
+    template<typename T>
+    static inline BOOL setFlag(T _Nonnull n, FlagType flag, BOOL x) {
+      return (((x ? n->_atomicFlags.fetch_or(flag) : n->_atomicFlags.fetch_and(~flag)) & flag) != 0);
+    }
+  }
+}
+
+// Atomic flags for ASDisplayNode
+typedef NS_OPTIONS(ASDN::Atomic::FlagType, ASDisplayNodeAtomicFlags)
 {
   Synchronous = 1 << 0,
 };
 
-#define checkFlag(flag) ((_atomicFlags.load() & flag) != 0)
-// Returns the old value of the flag as a BOOL.
-#define setFlag(flag, x) (((x ? _atomicFlags.fetch_or(flag) \
-                              : _atomicFlags.fetch_and(~flag)) & flag) != 0)
 
 FOUNDATION_EXPORT NSString * const ASRenderingEngineDidDisplayScheduledNodesNotification;
 FOUNDATION_EXPORT NSString * const ASRenderingEngineDidDisplayNodesScheduledBeforeTimestamp;
